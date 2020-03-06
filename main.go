@@ -19,12 +19,7 @@ type releaseInfo struct {
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var redirect string
 	if channel, ok := request.PathParameters["channel"]; ok {
-		switch channel {
-		case "latest", "stable":
-			redirect = fmt.Sprintf("https://offen.s3.eu-central-1.amazonaws.com/binaries/offen-%s.tar.gz", channel)
-		default:
-			return events.APIGatewayProxyResponse{}, fmt.Errorf("channel %s is not supported", channel)
-		}
+		redirect = fmt.Sprintf("https://offen.s3.eu-central-1.amazonaws.com/binaries/offen-%s.tar.gz", channel)
 	} else {
 		repo := os.Getenv("GITHUB_REPO")
 		endpoint := fmt.Sprintf("https://api.github.com/repos/%s/releases", repo)
