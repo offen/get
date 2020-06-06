@@ -8,6 +8,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Install dependencies
+          command: go mod download
+      - run:
           name: Build
           command: make build
       - persist_to_workspace:
@@ -17,15 +20,19 @@ jobs:
 
   deploy:
     docker:
-      - image: cimg/node:14
+      - image: cimg/node:14.4
     working_directory: ~/get
     steps:
       - checkout
       - attach_workspace:
-          at: ~/offen
+          at: ~/get
       - run:
           name: Install serverless
-          command: npm install serverless@^1.72.0 -g
+          command: |
+            mkdir -p ~/.npm-global
+            npm config set prefix '~/.npm-global'
+            npm install serverless@^1.72.0 -g
+            echo 'export PATH=~/.npm-global/bin/:$PATH' >> $BASH_ENV
       - run:
           name: Deploy
           command: sls deploy
@@ -34,7 +41,7 @@ workflows:
   version: 2
   deploy:
     jobs:
-      - build:
+      - build
       - deploy:
           requires:
             - build
