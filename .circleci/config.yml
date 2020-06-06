@@ -1,0 +1,46 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/go:1.14
+    working_directory: ~/get
+    steps:
+      - checkout
+      - run:
+          name: Build
+          command: make build
+      - persist_to_workspace:
+          root: ~/get
+          paths:
+            - bin/*
+
+  deploy:
+    docker:
+      - image: cimg/node:14
+    working_directory: ~/get
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/offen
+      - run:
+          name: Install serverless
+          command: npm install serverless@^1.72.0 -g
+      - run:
+          name: Deploy
+          command: sls deploy
+
+workflows:
+  version: 2
+  deploy:
+    jobs:
+      - build:
+      - deploy:
+          requires:
+            - build
+          context: AWS
+          filters:
+            branches:
+              only:
+                - master
+
