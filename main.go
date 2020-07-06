@@ -22,7 +22,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		redirect = fmt.Sprintf("https://offen.s3.eu-central-1.amazonaws.com/binaries/offen-%s.tar.gz", channel)
 	} else {
 		repo := os.Getenv("GITHUB_REPO")
-		endpoint := fmt.Sprintf("https://api.github.com/repos/%s/releases", repo)
+		endpoint := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", repo)
 
 		res, err := http.Get(endpoint)
 		if err != nil {
@@ -30,11 +30,11 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		}
 		defer res.Body.Close()
 
-		var data []releaseInfo
+		var data releaseInfo
 		if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
 			return events.APIGatewayProxyResponse{}, err
 		}
-		redirect = data[0].Assets[0].BrowserDownloadURL
+		redirect = data.Assets[0].BrowserDownloadURL
 	}
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusFound,
