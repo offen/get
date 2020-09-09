@@ -4,6 +4,7 @@ provider:
   name: aws
   region: eu-central-1
   runtime: go1.x
+  cfnRole: lambda.amazonaws.com
 
 package:
  exclude:
