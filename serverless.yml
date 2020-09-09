@@ -21,5 +21,8 @@ functions:
           path: /
           method: any
       - http:
-          path: /{channel}
+          path: /{param1}
+          method: any
+      - http:
+          path: /{param1}/{param2}
           method: any

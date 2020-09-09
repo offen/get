@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -17,11 +18,40 @@ func main() {
 	lambda.Start(handler)
 }
 
+const (
+	githubAssetTypeTarball = "tarball"
+	githubAssetTypeDeb     = "deb"
+	versionDevelopment     = "development"
+	versionStable          = "stable"
+)
+
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	if channel, ok := request.PathParameters["channel"]; ok {
-		return newRedirectResponse(
-			fmt.Sprintf("https://offen.s3.eu-central-1.amazonaws.com/binaries/offen-%s.tar.gz", channel),
-		), nil
+	githubAssetType := githubAssetTypeTarball
+
+	if param1, ok := request.PathParameters["param1"]; ok {
+		switch param1 {
+		case "deb":
+			// In case the first URL param is `deb` we assume the user wants to
+			// download a deb package. No additional parameter will return
+			// the asset from the latest GitHub release when a second parameter
+			// looks up the specific URL on S3.
+			if version, ok := request.PathParameters["param2"]; ok {
+				version = strings.TrimPrefix(version, "v")
+				if version == versionDevelopment || version == versionStable {
+					version = fmt.Sprintf("0.0.0-%s", version)
+				}
+				return newRedirectResponse(
+					fmt.Sprintf("https://offen.s3.eu-central-1.amazonaws.com/deb/offen_%s_amd64.deb", version),
+				), nil
+			}
+			githubAssetType = githubAssetTypeDeb
+		default:
+			// The default behavior is to return the tarball containing binaries
+			return newRedirectResponse(
+				fmt.Sprintf("https://offen.s3.eu-central-1.amazonaws.com/binaries/offen-%s.tar.gz", param1),
+			), nil
+		}
+
 	}
 
 	latest, err := getLatestReleaseInfo(os.Getenv("GITHUB_REPO"))
@@ -29,13 +59,39 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{}, fmt.Errorf("error getting latest release: %w", err)
 	}
 
-	return newRedirectResponse(latest.Assets[0].BrowserDownloadURL), nil
+	asset, assetErr := latest.match(githubAssetType)
+	if assetErr != nil {
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusNotFound,
+		}, nil
+	}
+	return newRedirectResponse(asset), nil
 }
 
 type releaseInfo struct {
 	Assets []struct {
 		BrowserDownloadURL string `json:"browser_download_url"`
 	} `json:"assets"`
+}
+
+func (r *releaseInfo) match(pkgType string) (string, error) {
+	switch pkgType {
+	case "deb":
+		for _, asset := range r.Assets {
+			if strings.HasSuffix(asset.BrowserDownloadURL, ".deb") {
+				return asset.BrowserDownloadURL, nil
+			}
+		}
+	case "tarball":
+		for _, asset := range r.Assets {
+			if strings.HasSuffix(asset.BrowserDownloadURL, ".tar.gz") {
+				return asset.BrowserDownloadURL, nil
+			}
+		}
+	default:
+		return "", fmt.Errorf("unknown package type %s", pkgType)
+	}
+	return "", fmt.Errorf("requested release did not contain an asset for %s", pkgType)
 }
 
 func getLatestReleaseInfo(repo string) (*releaseInfo, error) {
