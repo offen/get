@@ -20,14 +20,11 @@ func main() {
 
 const (
 	githubAssetTypeTarball = "tarball"
-	githubAssetTypeDeb     = "deb"
 	versionDevelopment     = "development"
 	versionStable          = "stable"
 )
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	githubAssetType := githubAssetTypeTarball
-
 	if param1, ok := request.PathParameters["param1"]; ok {
 		switch param1 {
 		case "deb":
@@ -38,13 +35,18 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			if version, ok := request.PathParameters["param2"]; ok {
 				version = strings.TrimPrefix(version, "v")
 				if version == versionDevelopment || version == versionStable {
-					version = fmt.Sprintf("0.0.0-%s", version)
+					return events.APIGatewayProxyResponse{
+						StatusCode: http.StatusNotFound,
+						Body:       "development or stable channels are not available when packaged as deb",
+					}, nil
 				}
 				return newRedirectResponse(
 					fmt.Sprintf("https://offen.s3.eu-central-1.amazonaws.com/deb/offen_%s_amd64.deb", version),
 				), nil
 			}
-			githubAssetType = githubAssetTypeDeb
+			return newRedirectResponse(
+				"https://offen.s3.eu-central-1.amazonaws.com/deb/offen_latest_amd64.deb",
+			), nil
 		default:
 			// The default behavior is to return the tarball containing binaries
 			return newRedirectResponse(
@@ -59,7 +61,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return events.APIGatewayProxyResponse{}, fmt.Errorf("error getting latest release: %w", err)
 	}
 
-	asset, assetErr := latest.match(githubAssetType)
+	asset, assetErr := latest.match(githubAssetTypeTarball)
 	if assetErr != nil {
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusNotFound,
