@@ -22,6 +22,10 @@ const githubRepo = "offen/offen"
 
 func main() {
 	r := mux.NewRouter()
+	r.HandleFunc("/healthz", func (w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 	r.HandleFunc("/", handler)
 	r.HandleFunc("/{param1}", handler)
 	r.HandleFunc("/{param1}/{param2}", handler)
