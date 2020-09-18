@@ -4,5 +4,5 @@
 
 # Get
 
-This is a simple HTTP server for serving <get.offen.dev>. It looks up the releases for the `offen/offen` repo, picks the latest release (including pre-releases) and returns a redirect to the download location.
+This is a simple HTTP server for serving <https://get.offen.dev>. It looks up the releases for the `offen/offen` repo, picks the latest release (including pre-releases) and returns a redirect to the download location.
 
