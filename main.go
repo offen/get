@@ -13,6 +13,9 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/handlers"
+
+
 )
 
 const githubRepo = "offen/offen"
@@ -23,7 +26,8 @@ func main() {
 	r.HandleFunc("/{param1}", handler)
 	r.HandleFunc("/{param1}/{param2}", handler)
 
-	if err := http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), r); err != nil {
+	withRecovery := handlers.RecoveryHandler(handlers.PrintRecoveryStack(true))(r)
+	if err := http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), withRecovery); err != nil {
 		log.Fatalf("error starting server %v", err)
 	}
 }

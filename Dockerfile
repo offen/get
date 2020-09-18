@@ -3,7 +3,7 @@
 
 FROM golang:1.15-alpine as builder
 
-COPY . /code
+COPY main.go go.mod go.sum /code/
 WORKDIR /code
 RUN go build -o get main.go
 
