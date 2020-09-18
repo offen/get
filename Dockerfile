@@ -3,8 +3,10 @@
 
 FROM golang:1.15-alpine as builder
 
-COPY main.go go.mod go.sum /code/
 WORKDIR /code
+COPY go.mod go.sum /code/
+RUN go mod download
+COPY main.go /code/
 RUN go build -o get main.go
 
 FROM alpine:3.12

@@ -40,7 +40,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	redirect, err := getRedirect(vars)
 	if err != nil {
-		if errors.Is(err, errNotFound) {
+		if err == errNotFound {
 			http.NotFound(w, r)
 			return
 		}
@@ -90,7 +90,6 @@ func getRedirect(params map[string]string) (string, error) {
 
 	asset, assetErr := latest.match(githubAssetTypeTarball)
 	if assetErr != nil {
-		fmt.Println("asset err", assetErr)
 		return "", errNotFound
 	}
 	return asset, nil
