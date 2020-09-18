@@ -12,33 +12,35 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/handlers"
-
-
+	"github.com/gorilla/mux"
 )
 
-const githubRepo = "offen/offen"
+const (
+	githubAssetTypeTarball = "tarball"
+	versionDevelopment     = "development"
+	versionStable          = "stable"
+	githubRepo             = "offen/offen"
+	storageServer          = "storage.offen.dev"
+)
+
+var errNotFound = errors.New("not found")
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc("/healthz", func (w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
-	r.HandleFunc("/", handler)
-	r.HandleFunc("/{param1}", handler)
-	r.HandleFunc("/{param1}/{param2}", handler)
-
+	r.HandleFunc("/healthz", healthHandler)
+	r.HandleFunc("/", redirectHandler)
+	r.HandleFunc("/{param1}", redirectHandler)
+	r.HandleFunc("/{param1}/{param2}", redirectHandler)
 	withRecovery := handlers.RecoveryHandler(handlers.PrintRecoveryStack(true))(r)
+
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), withRecovery); err != nil {
 		log.Fatalf("error starting server %v", err)
 	}
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	redirect, err := getRedirect(vars)
+func redirectHandler(w http.ResponseWriter, r *http.Request) {
+	redirect, err := getRedirect(mux.Vars(r))
 	if err != nil {
 		if err == errNotFound {
 			http.NotFound(w, r)
@@ -50,14 +52,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", redirect)
 	w.WriteHeader(http.StatusFound)
 }
-
-const (
-	githubAssetTypeTarball = "tarball"
-	versionDevelopment     = "development"
-	versionStable          = "stable"
-)
-
-var errNotFound = errors.New("not found")
 
 func getRedirect(params map[string]string) (string, error) {
 	if param1, ok := params["param1"]; ok {
@@ -73,17 +67,17 @@ func getRedirect(params map[string]string) (string, error) {
 				if version == versionDevelopment || version == versionStable {
 					return "", errNotFound
 				}
-				return fmt.Sprintf("https://storage.offen.dev/deb/offen_%s_amd64.deb", version), nil
+				return fmt.Sprintf("https://%s/deb/offen_%s_amd64.deb", storageServer, version), nil
 			}
-			return "https://storage.offen.dev/deb/offen_latest_amd64.deb", nil
+			return fmt.Sprintf("https://%s/deb/offen_latest_amd64.deb", storageServer), nil
 		default:
 			// The default behavior is to return the tarball containing binaries
-			return fmt.Sprintf("https://storage.offen.dev/binaries/offen-%s.tar.gz", param1), nil
+			return fmt.Sprintf("https://%s/binaries/offen-%s.tar.gz", storageServer, param1), nil
 		}
 
 	}
 
-	latest, err := getLatestReleaseInfo(githubRepo)
+	latest, err := getLatestReleaseInfo()
 	if err != nil {
 		return "", fmt.Errorf("error getting latest release: %w", err)
 	}
@@ -121,9 +115,10 @@ func (r *releaseInfo) match(pkgType string) (string, error) {
 	return "", fmt.Errorf("requested release did not contain an asset for %s", pkgType)
 }
 
-func getLatestReleaseInfo(repo string) (*releaseInfo, error) {
-	endpoint := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", repo)
-	res, err := http.Get(endpoint)
+func getLatestReleaseInfo() (*releaseInfo, error) {
+	res, err := http.Get(
+		fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", githubRepo),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error on HTTP request: %w", err)
 	}
@@ -134,4 +129,9 @@ func getLatestReleaseInfo(repo string) (*releaseInfo, error) {
 		return nil, fmt.Errorf("error decoding response body: %w", err)
 	}
 	return &responseBody, nil
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
