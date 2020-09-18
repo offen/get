@@ -41,16 +41,16 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 					}, nil
 				}
 				return newRedirectResponse(
-					fmt.Sprintf("https://offen.s3.eu-central-1.amazonaws.com/deb/offen_%s_amd64.deb", version),
+					fmt.Sprintf("https://storage.offen.dev/deb/offen_%s_amd64.deb", version),
 				), nil
 			}
 			return newRedirectResponse(
-				"https://offen.s3.eu-central-1.amazonaws.com/deb/offen_latest_amd64.deb",
+				"https://storage.offen.dev/deb/offen_latest_amd64.deb",
 			), nil
 		default:
 			// The default behavior is to return the tarball containing binaries
 			return newRedirectResponse(
-				fmt.Sprintf("https://offen.s3.eu-central-1.amazonaws.com/binaries/offen-%s.tar.gz", param1),
+				fmt.Sprintf("https://storage.offen.dev/binaries/offen-%s.tar.gz", param1),
 			), nil
 		}
 
