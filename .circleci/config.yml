@@ -22,7 +22,7 @@ jobs:
       - run:
           name: Run keyscan
           command: |
-            ssh-keyscan -H offen.offen.dev >> ~/.ssh/known_hosts
+            ssh-keyscan -H storage.offen.dev >> ~/.ssh/known_hosts
       - run:
           name: Configure git
           command: |
