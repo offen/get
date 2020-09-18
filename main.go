@@ -5,17 +5,42 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/gorilla/mux"
 )
 
+const githubRepo = "offen/offen"
+
 func main() {
-	lambda.Start(handler)
+	r := mux.NewRouter()
+	r.HandleFunc("/", handler)
+	r.HandleFunc("/{param1}", handler)
+	r.HandleFunc("/{param1}/{param2}", handler)
+
+	if err := http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), r); err != nil {
+		log.Fatalf("error starting server %v", err)
+	}
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	redirect, err := getRedirect(vars)
+	if err != nil {
+		if errors.Is(err, errNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Location", redirect)
+	w.WriteHeader(http.StatusFound)
 }
 
 const (
@@ -24,50 +49,43 @@ const (
 	versionStable          = "stable"
 )
 
-func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	if param1, ok := request.PathParameters["param1"]; ok {
+var errNotFound = errors.New("not found")
+
+func getRedirect(params map[string]string) (string, error) {
+	if param1, ok := params["param1"]; ok {
 		switch param1 {
 		case "deb":
 			// In case the first URL param is `deb` we assume the user wants to
 			// download a deb package. No additional parameter will return
 			// the asset from the latest GitHub release when a second parameter
 			// looks up the specific URL on S3.
-			if version, ok := request.PathParameters["param2"]; ok {
+			if param2, ok := params["param2"]; ok {
+				version := param2
 				version = strings.TrimPrefix(version, "v")
 				if version == versionDevelopment || version == versionStable {
-					return events.APIGatewayProxyResponse{
-						StatusCode: http.StatusNotFound,
-						Body:       "development or stable channels are not available when packaged as deb",
-					}, nil
+					return "", errNotFound
 				}
-				return newRedirectResponse(
-					fmt.Sprintf("https://storage.offen.dev/deb/offen_%s_amd64.deb", version),
-				), nil
+				return fmt.Sprintf("https://storage.offen.dev/deb/offen_%s_amd64.deb", version), nil
 			}
-			return newRedirectResponse(
-				"https://storage.offen.dev/deb/offen_latest_amd64.deb",
-			), nil
+			return "https://storage.offen.dev/deb/offen_latest_amd64.deb", nil
 		default:
 			// The default behavior is to return the tarball containing binaries
-			return newRedirectResponse(
-				fmt.Sprintf("https://storage.offen.dev/binaries/offen-%s.tar.gz", param1),
-			), nil
+			return fmt.Sprintf("https://storage.offen.dev/binaries/offen-%s.tar.gz", param1), nil
 		}
 
 	}
 
-	latest, err := getLatestReleaseInfo(os.Getenv("GITHUB_REPO"))
+	latest, err := getLatestReleaseInfo(githubRepo)
 	if err != nil {
-		return events.APIGatewayProxyResponse{}, fmt.Errorf("error getting latest release: %w", err)
+		return "", fmt.Errorf("error getting latest release: %w", err)
 	}
 
 	asset, assetErr := latest.match(githubAssetTypeTarball)
 	if assetErr != nil {
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusNotFound,
-		}, nil
+		fmt.Println("asset err", assetErr)
+		return "", errNotFound
 	}
-	return newRedirectResponse(asset), nil
+	return asset, nil
 }
 
 type releaseInfo struct {
@@ -109,13 +127,4 @@ func getLatestReleaseInfo(repo string) (*releaseInfo, error) {
 		return nil, fmt.Errorf("error decoding response body: %w", err)
 	}
 	return &responseBody, nil
-}
-
-func newRedirectResponse(location string) events.APIGatewayProxyResponse {
-	return events.APIGatewayProxyResponse{
-		StatusCode: http.StatusFound,
-		Headers: map[string]string{
-			"Location": location,
-		},
-	}
 }
