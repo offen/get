@@ -3,39 +3,41 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: cimg/go:1.14
+      - image: cimg/python:3.7
     working_directory: ~/get
     steps:
       - checkout
-      - run:
-          name: Install dependencies
-          command: go mod download
+      - setup_remote_docker
       - run:
           name: Build
-          command: make build
-      - persist_to_workspace:
-          root: ~/get
-          paths:
-            - bin/*
-
+          command: make build DOCKER_TAG=test
   deploy:
     docker:
-      - image: cimg/node:14.4
-    working_directory: ~/get
+      - image: cimg/base:2020.06
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - 'c3:09:7c:f4:a5:2c:66:45:79:53:f4:b4:ce:42:e7:bf'
       - checkout
-      - attach_workspace:
-          at: ~/get
       - run:
-          name: Install serverless
+          name: Run keyscan
           command: |
-            mkdir -p ~/.npm-global
-            npm config set prefix '~/.npm-global'
-            npm install serverless@^1.72.0 -g
-            echo 'export PATH=~/.npm-global/bin/:$PATH' >> $BASH_ENV
+            ssh-keyscan -H offen.offen.dev >> ~/.ssh/known_hosts
       - run:
-          name: Deploy
-          command: sls deploy
+          name: Configure git
+          command: |
+            git config --global user.email "hioffen@posteo.de"
+            git config --global user.name "Offen Deploy Bot"
+            git remote add deployment root@storage.offen.dev:offen/get.git
+      - run:
+          name: Push to deployment
+          command: |
+            git push deployment master -f 2>&1 | tee out.txt
+            grep -v "ERR_DEPLOYMENT_FAILED" out.txt > /dev/null
+      - run:
+          name: Check service health
+          command: |
+            curl -sSI https://get.offen.dev
 
 workflows:
   version: 2
@@ -45,7 +47,6 @@ workflows:
       - deploy:
           requires:
             - build
-          context: AWS
           filters:
             branches:
               only:

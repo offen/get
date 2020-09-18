@@ -1,3 +1,4 @@
-build: main.go
-	@go mod download
-	@go build -o ./bin/get main.go
+DOCKER_TAG ?= latest
+
+build: main.go Dockerfile
+	@docker build -t offen/get:${DOCKER_TAG} .
