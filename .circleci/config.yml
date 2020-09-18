@@ -22,13 +22,13 @@ jobs:
       - run:
           name: Run keyscan
           command: |
-            ssh-keyscan -H storage.offen.dev >> ~/.ssh/known_hosts
+            ssh-keyscan -H get.offen.dev >> ~/.ssh/known_hosts
       - run:
           name: Configure git
           command: |
             git config --global user.email "hioffen@posteo.de"
             git config --global user.name "Offen Deploy Bot"
-            git remote add deployment root@storage.offen.dev:offen/get.git
+            git remote add deployment root@get.offen.dev:offen/get.git
       - run:
           name: Push to deployment
           command: |
@@ -37,7 +37,7 @@ jobs:
       - run:
           name: Check service health
           command: |
-            curl -sSI https://get.offen.dev
+            curl -sSI https://get.offen.dev/healthz
 
 workflows:
   version: 2
