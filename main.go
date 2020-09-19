@@ -4,13 +4,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -34,9 +38,26 @@ func main() {
 	r.HandleFunc("/{param1}/{param2}", redirectHandler)
 	withRecovery := handlers.RecoveryHandler(handlers.PrintRecoveryStack(true))(r)
 
-	if err := http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), withRecovery); err != nil {
-		log.Fatalf("error starting server %v", err)
+	port := os.Getenv("PORT")
+	srv := &http.Server{
+		Addr:    fmt.Sprintf("0.0.0.0:%s", port),
+		Handler: withRecovery,
 	}
+
+	go srv.ListenAndServe()
+	log.Printf("Server now listening on port %s", port)
+
+	quit := make(chan os.Signal)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Error shutting down server: %v", err)
+	}
+
+	log.Print("Gracefully shut down server")
 }
 
 func redirectHandler(w http.ResponseWriter, r *http.Request) {
