@@ -1,7 +1,7 @@
 # Copyright 2020 - Offen Authors <hioffen@posteo.de>
 # SPDX-License-Identifier: MPL-2.0
 
-FROM golang:1.15-alpine as builder
+FROM golang:1.16-alpine as builder
 
 WORKDIR /code
 COPY go.mod go.sum /code/
