@@ -43,7 +43,7 @@ jobs:
           command: |
             git config --global user.email "hioffen@posteo.de"
             git config --global user.name "Offen Deploy Bot"
-            git remote add deployment root@get.offen.dev:offen/get.git
+            git remote add deployment offen@get.offen.dev:offen/get.git
       - run:
           name: Push to deployment
           command: |
