@@ -13,9 +13,10 @@ FROM alpine:3.12
 
 RUN addgroup -g 10001 -S get && \
   adduser -u 10000 -S -G get -h /home/get get
-RUN apk add -U --no-cache ca-certificates tini
+RUN apk add -U --no-cache ca-certificates tini libcap
 
 COPY --from=builder /code/get /sbin/get
+RUN setcap CAP_NET_BIND_SERVICE=+eip /sbin/get
 
 ENV PORT 80
 EXPOSE 80
