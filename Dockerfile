@@ -11,12 +11,15 @@ RUN go build -o get main.go
 
 FROM alpine:3.12
 
-RUN apk add -U --no-cache ca-certificates
+RUN addgroup -g 10001 -S get && \
+  adduser -u 10000 -S -G get -h /home/get get
+RUN apk add -U --no-cache ca-certificates tini
 
-COPY --from=builder /code/get /usr/local/bin/get
+COPY --from=builder /code/get /sbin/get
 
 ENV PORT 80
 EXPOSE 80
 
-WORKDIR /root
-ENTRYPOINT ["get"]
+ENTRYPOINT ["/sbin/tini", "--", "get"]
+
+USER get
