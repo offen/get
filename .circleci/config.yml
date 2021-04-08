@@ -14,8 +14,8 @@ jobs:
       - run:
           name: Check if image needs to be pushed
           command: |
-            if [[ $CIRCLE_BRANCH != "master" ]]; then
-              echo "Not on master branch, nothing to do ..."
+            if [[ $CIRCLE_BRANCH != "main" ]]; then
+              echo "Not on main branch, nothing to do ..."
               circleci-agent step halt
             fi
       - docker/install-docker-credential-helper
@@ -65,7 +65,7 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - main
 
 orbs:
   docker: circleci/docker@1.0.1
