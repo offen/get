@@ -26,46 +26,11 @@ jobs:
             echo "$DOCKER_ACCESSTOKEN" | docker login --username offen --password-stdin
             docker push offen/get:latest
 
-  deploy:
-    docker:
-      - image: cimg/base:2020.06
-    steps:
-      - add_ssh_keys:
-          fingerprints:
-            - 'c3:09:7c:f4:a5:2c:66:45:79:53:f4:b4:ce:42:e7:bf'
-      - checkout
-      - run:
-          name: Run keyscan
-          command: |
-            ssh-keyscan -H get.offen.dev >> ~/.ssh/known_hosts
-      - run:
-          name: Configure git
-          command: |
-            git config --global user.email "hioffen@posteo.de"
-            git config --global user.name "Offen Deploy Bot"
-            git remote add deployment offen@get.offen.dev:offen/get.git
-      - run:
-          name: Push to deployment
-          command: |
-            git push deployment main -f 2>&1 | tee out.txt
-            grep -v "ERR_DEPLOYMENT_FAILED" out.txt > /dev/null
-      - run:
-          name: Check service health
-          command: |
-            curl -sSI https://get.offen.dev/healthz
-
 workflows:
   version: 2
   deploy:
     jobs:
       - build
-      - deploy:
-          requires:
-            - build
-          filters:
-            branches:
-              only:
-                - main
 
 orbs:
   docker: circleci/docker@1.0.1

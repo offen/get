@@ -9,7 +9,7 @@ RUN go mod download
 COPY main.go /code/
 RUN go build -o get main.go
 
-FROM alpine:3.12
+FROM alpine:3.14
 
 RUN addgroup -g 10001 -S get && \
   adduser -u 10000 -S -G get -h /home/get get
