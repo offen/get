@@ -91,6 +91,18 @@ func getRedirect(params map[string]string) (string, error) {
 				return fmt.Sprintf("https://%s/deb/offen_%s_amd64.deb", storageServer, version), nil
 			}
 			return fmt.Sprintf("https://%s/deb/offen_latest_amd64.deb", storageServer), nil
+		case "crx":
+			// In case the first URL param is `crx` we assume the user wants to
+			// download a signed and packaged web extension.
+			if param2, ok := params["param2"]; ok {
+				version := param2
+				version = strings.TrimPrefix(version, "v")
+				if version == versionDevelopment || version == versionStable {
+					return "", errNotFound
+				}
+				return fmt.Sprintf("https://%s/crx/offen_%s.crx", storageServer, version), nil
+			}
+			return fmt.Sprintf("https://%s/crx/offen_latest.crx", storageServer), nil
 		default:
 			// The default behavior is to return the tarball containing binaries
 			return fmt.Sprintf("https://%s/binaries/offen-%s.tar.gz", storageServer, param1), nil
