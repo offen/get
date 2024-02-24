@@ -33,4 +33,4 @@ workflows:
       - build
 
 orbs:
-  docker: circleci/docker@1.0.1
+  docker: circleci/docker@2.5.0
